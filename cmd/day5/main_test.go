@@ -25,6 +25,16 @@ func TestExecuteV3(t *testing.T) {
 			program:        []int{1101, 100, -1, 0, 4, 0, 99},
 			expectedOutput: []int{99},
 		},
+		{
+			program:        []int{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
+			input:          8,
+			expectedOutput: []int{1},
+		},
+		{
+			program:        []int{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
+			input:          7,
+			expectedOutput: []int{1},
+		},
 	}
 
 	for i, tc := range testCases {

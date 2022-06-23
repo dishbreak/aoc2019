@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dishbreak/aoc2020/lib"
+	"github.com/dishbreak/aoc-common/lib"
 )
 
 func main() {
@@ -15,6 +15,7 @@ func main() {
 	}
 
 	fmt.Printf("Part 1: %d\n", part1(input))
+	fmt.Printf("Part 2: %d\n", part2(input))
 }
 
 func toInstructions(input []string) []int {
@@ -41,6 +42,17 @@ func part1(input []string) int {
 		}
 	}
 	return result[len(result)-1]
+}
+
+func part2(input []string) int {
+	program := toInstructions(input)
+
+	result, err := executeV3(5, program)
+	if err != nil {
+		panic(err)
+	}
+
+	return result[0]
 }
 
 func loadInputs(i int, s int, program []int) []int {
@@ -88,6 +100,34 @@ func executeV3(input int, program []int) ([]int, error) {
 				outputs = append(outputs, program[o])
 			}
 			i = i + 2
+		case 5:
+			inputs := loadInputs(i, s, program)
+			i = i + 3
+			if inputs[0] != 0 {
+				i = inputs[1]
+			}
+		case 6:
+			inputs := loadInputs(i, s, program)
+			i = i + 3
+			if inputs[0] == 0 {
+				i = inputs[1]
+			}
+		case 7:
+			inputs := loadInputs(i, s, program)
+			output := i + 3
+			program[output] = 0
+			if inputs[0] < inputs[1] {
+				program[output] = 1
+			}
+			i = i + 4
+		case 8:
+			inputs := loadInputs(i, s, program)
+			output := i + 3
+			program[output] = 0
+			if inputs[0] == inputs[1] {
+				program[output] = 1
+			}
+			i = i + 4
 		case 99:
 			if lastOpcode == 4 {
 				return outputs, nil

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dishbreak/aoc2020/lib"
+	"github.com/dishbreak/aoc-common/lib"
 )
 
 func main() {
