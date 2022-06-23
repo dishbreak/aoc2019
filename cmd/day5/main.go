@@ -114,7 +114,7 @@ func executeV3(input int, program []int) ([]int, error) {
 			}
 		case 7:
 			inputs := loadInputs(i, s, program)
-			output := i + 3
+			output := program[i+3]
 			program[output] = 0
 			if inputs[0] < inputs[1] {
 				program[output] = 1
@@ -122,7 +122,7 @@ func executeV3(input int, program []int) ([]int, error) {
 			i = i + 4
 		case 8:
 			inputs := loadInputs(i, s, program)
-			output := i + 3
+			output := program[i+3]
 			program[output] = 0
 			if inputs[0] == inputs[1] {
 				program[output] = 1
