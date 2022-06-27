@@ -45,7 +45,7 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 		inputStream <- val
 	}
 
-	go i.Simulate(ctx, inputStream, output, errStream)
+	go i.Simulate(ctx, inputStream, output, errStream, nil)
 
 	result := -1
 	for {
@@ -63,7 +63,8 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 	}
 }
 
-func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output chan<- int, errStream chan<- error) {
+func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output chan<- int, errStream chan<- error, term chan<- int) {
+	lastOutput := -1
 	lastOpcode := -1
 	for pc := 0; pc < len(i.program); {
 		select {
@@ -89,11 +90,11 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output
 			pc = pc + 2
 		case 4:
 			o := i.program[pc+1]
-			if k := s / 100; k > 0 {
-				output <- o
-			} else {
-				output <- i.program[o]
+			if k := s / 100; k <= 0 {
+				o = i.program[o]
 			}
+			lastOutput = o
+			output <- o
 			pc = pc + 2
 		case 5:
 			inputs := loadInputs(pc, s, i.program)
@@ -126,6 +127,9 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output
 		case 99:
 			if lastOpcode != 4 {
 				errStream <- fmt.Errorf("unexpected halt")
+			}
+			if term != nil {
+				term <- lastOutput
 			}
 			close(errStream)
 			return

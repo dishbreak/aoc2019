@@ -35,6 +35,46 @@ func TestComputer(t *testing.T) {
 			input:          []int{7},
 			expectedOutput: 0,
 		},
+		{
+			program: []int{
+				3,  // 00 input
+				11, // 01 ->inputA var
+				3,  // 02 input
+				12, // 03 ->inputB var
+				8,  // 04 cmp
+				11, // 05 ->inputA var
+				12, // 06 ->inputB var
+				13, // 07 ->output var
+				4,  // 08 output
+				13, // 09 ->output var
+				99, // 10 halt
+				0,  // 11 inputA var
+				0,  // 12 inputB var
+				0,  // 13 output var
+			},
+			input:          []int{34, 14},
+			expectedOutput: 0,
+		},
+		{
+			program: []int{
+				3,  // 00 input
+				11, // 01 ->inputA var
+				3,  // 02 input
+				12, // 03 ->inputB var
+				8,  // 04 cmp
+				11, // 05 ->inputA var
+				12, // 06 ->inputB var
+				13, // 07 ->output var
+				4,  // 08 output
+				13, // 09 ->output var
+				99, // 10 halt
+				0,  // 11 inputA var
+				0,  // 12 inputB var
+				0,  // 13 output var
+			},
+			input:          []int{34, 34},
+			expectedOutput: 1,
+		},
 	}
 
 	for i, tc := range testCases {
