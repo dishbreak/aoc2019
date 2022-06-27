@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -33,12 +34,42 @@ func loadInputs(i int, s int, program []int) []int {
 }
 
 func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error) {
-	output := -1
+	inputStream := make(chan int, len(input))
+	output := make(chan int, 1)
+	errStream := make(chan error)
+
+	defer close(inputStream)
+	defer close(output)
+
+	for _, val := range input {
+		inputStream <- val
+	}
+
+	go i.Simulate(ctx, inputStream, output, errStream)
+
+	result := -1
+	for {
+		select {
+		case <-ctx.Done():
+			return -1, ctx.Err()
+		case o, ok := <-output:
+			if !ok {
+				return -1, errors.New("simulation hung up")
+			}
+			result = o
+		case err := <-errStream:
+			return result, err
+		}
+	}
+}
+
+func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output chan<- int, errStream chan<- error) {
 	lastOpcode := -1
 	for pc := 0; pc < len(i.program); {
 		select {
 		case <-ctx.Done():
-			return output, ctx.Err()
+			errStream <- ctx.Err()
+			return
 		default:
 		}
 		s := i.program[pc]
@@ -54,15 +85,14 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 			i.program[i.program[pc+3]] = inputs[0] * inputs[1]
 			pc = pc + 4
 		case 3:
-			i.program[i.program[pc+1]] = input[0]
-			input = input[1:]
+			i.program[i.program[pc+1]] = <-input
 			pc = pc + 2
 		case 4:
 			o := i.program[pc+1]
 			if k := s / 100; k > 0 {
-				output = o
+				output <- o
 			} else {
-				output = i.program[o]
+				output <- i.program[o]
 			}
 			pc = pc + 2
 		case 5:
@@ -94,14 +124,15 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 			}
 			pc = pc + 4
 		case 99:
-			if lastOpcode == 4 {
-				return output, nil
+			if lastOpcode != 4 {
+				errStream <- fmt.Errorf("unexpected halt")
 			}
-			return output, fmt.Errorf("unexpected halt")
+			close(errStream)
+			return
 		default:
-			return output, fmt.Errorf("unexpected instruction: %d", opcode)
+			errStream <- fmt.Errorf("unexpected instruction: %d", opcode)
 		}
 		lastOpcode = opcode
 	}
-	return output, fmt.Errorf("unexpected EOF")
+	errStream <- fmt.Errorf("unexpected EOF")
 }
