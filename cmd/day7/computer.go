@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 )
 
 type IntcodeComputer struct {
@@ -37,7 +38,7 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 	inputStream := make(chan int, len(input))
 	output := make(chan int, 1)
 	errStream := make(chan error)
-
+	done := make(chan interface{})
 	defer close(inputStream)
 	defer close(output)
 
@@ -45,7 +46,7 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 		inputStream <- val
 	}
 
-	go i.Simulate(ctx, inputStream, output, errStream, nil)
+	go i.Simulate(ctx, "execution", inputStream, output, errStream, nil, done)
 
 	result := -1
 	for {
@@ -59,23 +60,23 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int) (int, error)
 			result = o
 		case err := <-errStream:
 			return result, err
+		case <-done:
+			return result, nil
 		}
 	}
 }
 
-func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output chan<- int, errStream chan<- error, term chan<- int) {
+func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-chan int, output chan<- int, errStream chan<- error, term chan<- int, done chan<- interface{}) {
 	lastOutput := -1
-	lastOpcode := -1
 	for pc := 0; pc < len(i.program); {
 		select {
 		case <-ctx.Done():
-			errStream <- ctx.Err()
 			return
 		default:
 		}
 		s := i.program[pc]
 		opcode := s % 100
-
+		// log.Println(name, pc, opcode)
 		switch opcode {
 		case 1:
 			inputs := loadInputs(pc, s, i.program)
@@ -86,13 +87,16 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output
 			i.program[i.program[pc+3]] = inputs[0] * inputs[1]
 			pc = pc + 4
 		case 3:
-			i.program[i.program[pc+1]] = <-input
+			inputValue := <-input
+			// log.Printf("%s: got input %d\n", name, inputValue)
+			i.program[i.program[pc+1]] = inputValue
 			pc = pc + 2
 		case 4:
 			o := i.program[pc+1]
 			if k := s / 100; k <= 0 {
 				o = i.program[o]
 			}
+			// log.Printf("%s: sending output %d\n", name, o)
 			lastOutput = o
 			output <- o
 			pc = pc + 2
@@ -125,18 +129,17 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, input <-chan int, output
 			}
 			pc = pc + 4
 		case 99:
-			if lastOpcode != 4 {
-				errStream <- fmt.Errorf("unexpected halt")
-			}
+			log.Printf(name, "halt")
 			if term != nil {
 				term <- lastOutput
 			}
-			close(errStream)
+			if done != nil {
+				close(done)
+			}
 			return
 		default:
 			errStream <- fmt.Errorf("unexpected instruction: %d", opcode)
 		}
-		lastOpcode = opcode
 	}
 	errStream <- fmt.Errorf("unexpected EOF")
 }
