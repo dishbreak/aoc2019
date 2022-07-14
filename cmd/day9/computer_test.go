@@ -10,33 +10,33 @@ import (
 
 func TestComputer(t *testing.T) {
 	type testCase struct {
-		program        []int
-		input          []int
-		expectedOutput int
+		program        []int64
+		input          []int64
+		expectedOutput int64
 	}
 
 	testCases := []testCase{
 		{
-			program:        []int{3, 0, 4, 0, 99},
-			input:          []int{1337},
+			program:        []int64{3, 0, 4, 0, 99},
+			input:          []int64{1337},
 			expectedOutput: 1337,
 		},
 		{
-			program:        []int{1101, 100, -1, 0, 4, 0, 99},
+			program:        []int64{1101, 100, -1, 0, 4, 0, 99},
 			expectedOutput: 99,
 		},
 		{
-			program:        []int{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
+			program:        []int64{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
 			expectedOutput: 1,
-			input:          []int{8},
+			input:          []int64{8},
 		},
 		{
-			program:        []int{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
-			input:          []int{7},
+			program:        []int64{3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8},
+			input:          []int64{7},
 			expectedOutput: 0,
 		},
 		{
-			program: []int{
+			program: []int64{
 				3,  // 00 input
 				11, // 01 ->inputA var
 				3,  // 02 input
@@ -52,11 +52,11 @@ func TestComputer(t *testing.T) {
 				0,  // 12 inputB var
 				0,  // 13 output var
 			},
-			input:          []int{34, 14},
+			input:          []int64{34, 14},
 			expectedOutput: 0,
 		},
 		{
-			program: []int{
+			program: []int64{
 				3,  // 00 input
 				11, // 01 ->inputA var
 				3,  // 02 input
@@ -72,7 +72,7 @@ func TestComputer(t *testing.T) {
 				0,  // 12 inputB var
 				0,  // 13 output var
 			},
-			input:          []int{34, 34},
+			input:          []int64{34, 34},
 			expectedOutput: 1,
 		},
 	}
