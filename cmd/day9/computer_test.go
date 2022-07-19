@@ -88,3 +88,60 @@ func TestComputer(t *testing.T) {
 	}
 
 }
+
+func TestLoadInput(t *testing.T) {
+	type testCase struct {
+		program  []int64
+		relBase  int64
+		addr     int64
+		mode     ParameterMode
+		expected int64
+	}
+
+	exampleProgram := []int64{
+		10, // 0
+		3,  // 1
+		45, // 2
+		17, // 3
+		12, // 4
+		2,  // 5
+		67, // 6
+	}
+	testCases := []testCase{
+		{
+			program:  exampleProgram,
+			addr:     3,
+			mode:     ImmediateMode,
+			expected: 17,
+		},
+		{
+			program:  exampleProgram,
+			addr:     5,
+			mode:     PositionalMode,
+			expected: 45,
+		},
+		{
+			program:  exampleProgram,
+			addr:     5,
+			mode:     RelativeMode,
+			expected: 45,
+		},
+		{
+			program:  exampleProgram,
+			addr:     5,
+			relBase:  2,
+			mode:     RelativeMode,
+			expected: 12,
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
+			c := &IntcodeComputer{}
+			c.Load(tc.program)
+			c.rel = tc.relBase
+
+			assert.Equal(t, tc.expected, c.getInput(tc.mode, tc.addr))
+		})
+	}
+}
