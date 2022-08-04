@@ -28,7 +28,7 @@ func (i *IntcodeComputer) loadInputs(idx int64) []int64 {
 	}
 	inputs := make([]int64, 2)
 	for j := range inputs {
-		inputs[j] = i.getInput(flags[j], int64(j+1)+idx)
+		inputs[j] = i.getValue(flags[j], int64(j+1)+idx)
 	}
 	return inputs
 }
@@ -41,7 +41,7 @@ const (
 	RelativeMode
 )
 
-func (i *IntcodeComputer) getInput(mode ParameterMode, addr int64) int64 {
+func (i *IntcodeComputer) getValue(mode ParameterMode, addr int64) int64 {
 	switch mode {
 	case RelativeMode:
 		addr = i.program[addr]
@@ -99,38 +99,72 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		s := i.program[pc]
 		opcode := s % 100
 		switch opcode {
+		/*
+			Opcode 1 adds together numbers read from two positions and stores
+			the result in a third position. The three integers immediately
+			after the opcode tell you these three positions - the first two
+			indicate the positions from which you should read the input values,
+			and the third indicates the position at which the output should be
+			stored.
+		*/
 		case 1:
 			inputs := i.loadInputs(pc)
 			i.program[i.program[pc+3]] = inputs[0] + inputs[1]
 			pc = pc + 4
+		/*
+			Opcode 2 works exactly like opcode 1, except it multiplies the two
+			inputs instead of adding them. Again, the three integers after the
+			opcode indicate where the inputs and outputs are, not their values.
+		*/
 		case 2:
 			inputs := i.loadInputs(pc)
 			i.program[i.program[pc+3]] = inputs[0] * inputs[1]
 			pc = pc + 4
+		/*
+			Opcode 3 takes a single integer as input and saves it to the
+			position given by its only parameter. For example, the instruction
+			3,50 would take an input value and store it at address 50.
+		*/
 		case 3:
 			inputValue := <-input
 			i.program[i.program[pc+1]] = inputValue
 			pc = pc + 2
+		/*
+			Opcode 4 outputs the value of its only parameter. For example, the
+			instruction 4,50 would output the value at address 50.
+		*/
 		case 4:
-			o := i.program[pc+1]
-			if k := s / 100; k <= 0 {
-				o = i.program[o]
-			}
+			o := i.getValue(ParameterMode(s/100), pc+1)
 			lastOutput = o
 			output <- o
 			pc = pc + 2
+		/*
+			Opcode 5 is jump-if-true: if the first parameter is non-zero, it
+			sets the instruction pointer to the value from the second parameter.
+			Otherwise, it does nothing.
+		*/
 		case 5:
 			inputs := i.loadInputs(pc)
 			pc = pc + 3
 			if inputs[0] != 0 {
 				pc = inputs[1]
 			}
+		/*
+			Opcode 6 is jump-if-false: if the first parameter is zero, it sets
+			the instruction pointer to the value from the second parameter.
+			Otherwise, it does nothing.
+		*/
 		case 6:
 			inputs := i.loadInputs(pc)
 			pc = pc + 3
 			if inputs[0] == 0 {
 				pc = inputs[1]
 			}
+		/*
+			Opcode 7 is less than: if the first parameter is less than the
+			second parameter, it stores 1 in the position given by the third
+			parameter. Otherwise, it stores 0.
+		*/
 		case 7:
 			inputs := i.loadInputs(pc)
 			output := i.program[pc+3]
@@ -139,6 +173,11 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 				i.program[output] = 1
 			}
 			pc = pc + 4
+		/*
+			Opcode 8 is equals: if the first parameter is equal to the second
+			parameter, it stores 1 in the position given by the third parameter.
+			Otherwise, it stores 0.
+		*/
 		case 8:
 			inputs := i.loadInputs(pc)
 			output := i.program[pc+3]
@@ -147,10 +186,18 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 				i.program[output] = 1
 			}
 			pc = pc + 4
+		/*
+			Opcode 9 adjusts the relative base by the value of its only
+			parameter. The relative base increases (or decreases, if the value
+			is negative) by the value of the parameter.
+		*/
 		case 9:
 			mode := ParameterMode(s / 100)
-			i.rel = i.getInput(mode, pc+1)
+			i.rel += i.getValue(mode, pc+1)
 			pc = pc + 2
+		/*
+			Opcode 99 halts the program.
+		*/
 		case 99:
 			if term != nil {
 				term <- lastOutput

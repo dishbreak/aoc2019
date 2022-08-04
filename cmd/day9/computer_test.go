@@ -75,6 +75,11 @@ func TestComputer(t *testing.T) {
 			input:          []int64{34, 34},
 			expectedOutput: 1,
 		},
+		{
+			program:        []int64{104, 1125899906842624, 99},
+			input:          []int64{},
+			expectedOutput: 1125899906842624,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -89,7 +94,43 @@ func TestComputer(t *testing.T) {
 
 }
 
-func TestLoadInput(t *testing.T) {
+func TestSimulate(t *testing.T) {
+	program := []int64{109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99}
+	inputChan := make(chan int64, len(program))
+	defer close(inputChan)
+
+	outputChan := make(chan int64)
+	outputs := make([]int64, 0)
+
+	go func() {
+		for val := range outputChan {
+			outputs = append(outputs, val)
+		}
+	}()
+
+	doneChan := make(chan interface{})
+	errChan := make(chan error)
+	i := &IntcodeComputer{}
+	i.Load(program)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer close(errChan)
+	go func() {
+		i.Simulate(ctx, "TestSimulate", inputChan, outputChan, errChan, nil, doneChan)
+	}()
+	for {
+		select {
+		case <-doneChan:
+			assert.Equal(t, program, outputs)
+			return
+		case e := <-errChan:
+			t.Fatalf("failed simulate: %s", e)
+		}
+	}
+
+}
+
+func TestGetValue(t *testing.T) {
 	type testCase struct {
 		program  []int64
 		relBase  int64
@@ -141,7 +182,7 @@ func TestLoadInput(t *testing.T) {
 			c.Load(tc.program)
 			c.rel = tc.relBase
 
-			assert.Equal(t, tc.expected, c.getInput(tc.mode, tc.addr))
+			assert.Equal(t, tc.expected, c.getValue(tc.mode, tc.addr))
 		})
 	}
 }
