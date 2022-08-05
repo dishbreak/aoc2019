@@ -88,6 +88,16 @@ func (i *IntcodeComputer) Execute(ctx context.Context, input []int64) (int64, er
 	}
 }
 
+func (i *IntcodeComputer) resolve(mode ParameterMode, ref int64) (addr int64) {
+	switch mode {
+	case RelativeMode:
+		addr = ref + i.rel
+	default: // positional mode (immedate mode unsupported for opcode 3)
+		addr = ref
+	}
+	return
+}
+
 func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-chan int64, output chan<- int64, errStream chan<- error, term chan<- int64, done chan<- interface{}) {
 	lastOutput := int64(-1)
 	for pc := int64(0); true; {
@@ -109,7 +119,8 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		*/
 		case 1:
 			inputs := i.loadInputs(pc)
-			i.program[i.program[pc+3]] = inputs[0] + inputs[1]
+			destAddr := i.resolve(ParameterMode(s/10000), i.program[pc+3])
+			i.program[destAddr] = inputs[0] + inputs[1]
 			pc = pc + 4
 		/*
 			Opcode 2 works exactly like opcode 1, except it multiplies the two
@@ -118,7 +129,8 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		*/
 		case 2:
 			inputs := i.loadInputs(pc)
-			i.program[i.program[pc+3]] = inputs[0] * inputs[1]
+			destAddr := i.resolve(ParameterMode(s/10000), i.program[pc+3])
+			i.program[destAddr] = inputs[0] * inputs[1]
 			pc = pc + 4
 		/*
 			Opcode 3 takes a single integer as input and saves it to the
@@ -127,7 +139,7 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		*/
 		case 3:
 			inputValue := <-input
-			i.program[i.program[pc+1]] = inputValue
+			i.program[i.resolve(ParameterMode(s/100), i.program[pc+1])] = inputValue
 			pc = pc + 2
 		/*
 			Opcode 4 outputs the value of its only parameter. For example, the
@@ -167,10 +179,10 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		*/
 		case 7:
 			inputs := i.loadInputs(pc)
-			output := i.program[pc+3]
-			i.program[output] = 0
+			destAddr := i.resolve(ParameterMode(s/10000), i.program[pc+3])
+			i.program[destAddr] = 0
 			if inputs[0] < inputs[1] {
-				i.program[output] = 1
+				i.program[destAddr] = 1
 			}
 			pc = pc + 4
 		/*
@@ -180,10 +192,10 @@ func (i *IntcodeComputer) Simulate(ctx context.Context, name string, input <-cha
 		*/
 		case 8:
 			inputs := i.loadInputs(pc)
-			output := i.program[pc+3]
-			i.program[output] = 0
+			destAddr := i.resolve(ParameterMode(s/10000), i.program[pc+3])
+			i.program[destAddr] = 0
 			if inputs[0] == inputs[1] {
-				i.program[output] = 1
+				i.program[destAddr] = 1
 			}
 			pc = pc + 4
 		/*
