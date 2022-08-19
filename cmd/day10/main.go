@@ -39,8 +39,15 @@ func parseSpace(input []string) (a asteroidField) {
 	}
 	a.max = image.Pt(len(input[0]), len(input)).Add(image.Pt(-1, -1))
 
-	a.r = image.Rectangle{a.min, a.max}
+	a.r = image.Rectangle{a.min, a.max}.Inset(-1)
 	return
+}
+
+func (a asteroidField) contains(p image.Point) bool {
+	xInBounds := p.X >= a.min.X && p.X <= a.max.X
+	yInBounds := p.Y >= a.min.Y && p.Y <= a.max.Y
+
+	return xInBounds && yInBounds
 }
 
 func part1(input []string) int {
@@ -106,10 +113,10 @@ func (b *box) Expand() {
 }
 
 func (b *box) Covers(a asteroidField) bool {
-	if bMin := b.nwCorner; bMin.X > a.min.X || bMin.Y > a.min.Y {
+	if bMin := b.nwCorner; bMin.X >= a.min.X || bMin.Y >= a.min.Y {
 		return false
 	}
-	if bMax := b.seCorner; bMax.X < a.max.X || bMax.Y < a.max.Y {
+	if bMax := b.seCorner; bMax.X <= a.max.X || bMax.Y <= a.max.Y {
 		return false
 	}
 	return true
@@ -155,12 +162,20 @@ func reduce(p image.Point) image.Point {
 
 func discover(space asteroidField, origin image.Point) (seen int) {
 	blocked := make(map[image.Point]bool)
+
 	trace := func(start, end, direction image.Point) (found int) {
-		for b := start; !b.Eq(end); b.Add(direction) {
+		for b := start; !b.Eq(end); b = b.Add(direction) {
 			if blocked[b] || !space.pts[b] {
 				continue
 			}
+			found++
 
+			v := reduce(b.Sub(origin))
+			for n := b.Add(v); space.contains(n); n = n.Add(v) {
+				if space.pts[n] {
+					blocked[n] = true
+				}
+			}
 		}
 		return
 	}
@@ -171,17 +186,4 @@ func discover(space asteroidField, origin image.Point) (seen int) {
 		seen += trace(b.swCorner, b.nwCorner, north)
 	}
 	return
-}
-
-func load(index [][]image.Point, key int) []image.Point {
-	hits := make([]image.Point, 0)
-
-	if key-1 > 0 {
-		hits = append(hits, index[key-1]...)
-	}
-	if key+1 < len(index) {
-		hits = append(hits, index[key+1]...)
-	}
-
-	return hits
 }
