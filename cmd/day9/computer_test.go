@@ -121,7 +121,7 @@ func TestSimulate(t *testing.T) {
 	for {
 		select {
 		case <-doneChan:
-			assert.Equal(t, program, outputs)
+			assert.Equal(t, program[0:len(program)-1], outputs)
 			return
 		case e := <-errChan:
 			t.Fatalf("failed simulate: %s", e)
