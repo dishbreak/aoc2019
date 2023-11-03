@@ -14,7 +14,7 @@ func TestPart1(t *testing.T) {
 	output := make(chan int64)
 	defer close(inputStream)
 
-	result := runRobot(ctx, inputStream, output)
+	result := runRobot(ctx, inputStream, output, 0)
 
 	go func() {
 		defer close(output)
@@ -50,5 +50,5 @@ func TestPart1(t *testing.T) {
 
 	}()
 
-	assert.Equal(t, 6, <-result)
+	assert.Equal(t, 6, len(<-result))
 }

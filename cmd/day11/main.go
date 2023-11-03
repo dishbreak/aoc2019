@@ -36,27 +36,28 @@ func part1(input string) int {
 	defer close(inputStream)
 
 	go comp.Simulate(ctx, "hull painter", inputStream, output, errStream)
-	return <-runRobot(ctx, inputStream, output)
+	return len(<-runRobot(ctx, inputStream, output, 0))
 }
 
-func runRobot(ctx context.Context, inputStream chan<- int64, output <-chan int64) <-chan int {
-	result := make(chan int)
+func runRobot(ctx context.Context, inputStream chan<- int64, output <-chan int64, startingValue int64) <-chan map[image.Point]int64 {
+	result := make(chan map[image.Point]int64)
 
 	go func() {
 		defer close(result)
 		hull := make(map[image.Point]int64)
 		p := image.Pt(0, 0)
+		hull[p] = startingValue
 		c := NewCompass()
 		inputStream <- hull[p]
 		outputCtr := 0
 		for {
 			select {
 			case <-ctx.Done():
-				result <- -1
+				result <- nil
 				return
 			case o, ok := <-output:
 				if !ok {
-					result <- len(hull)
+					result <- hull
 					return
 				}
 				outputCtr++
