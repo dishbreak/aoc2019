@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -17,6 +18,7 @@ func main() {
 
 	fmt.Printf("Part 1: %d\n", part1(f))
 	f.Seek(0, 0)
+	fmt.Printf("Part 2: %d\n", part2(f))
 }
 
 type frame struct {
@@ -126,4 +128,88 @@ func load(r io.Reader) [][3]int {
 	}
 
 	return lines
+}
+
+func GCD(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
+	}
+	return a
+}
+
+// find Least Common Multiple (LCM) via GCD
+func LCM(a, b int, integers ...int) int {
+	result := a * b / GCD(a, b)
+
+	for i := 0; i < len(integers); i++ {
+		result = LCM(result, integers[i])
+	}
+
+	return result
+}
+
+func part2(r io.Reader) int {
+	coords := load(r)
+
+	reports := make(chan int)
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	for i := 0; i < 3; i++ {
+		go func(dim int) {
+			defer wg.Done()
+			vel := make([]int, len(coords))
+			pos := make([]int, len(coords))
+
+			for j := range coords {
+				pos[j] = coords[j][dim]
+			}
+
+			seen := make(map[string]bool)
+			ct := 0
+			for {
+				hash := fmt.Sprint(pos, vel)
+				if seen[hash] {
+					break
+				}
+				seen[hash] = true
+				for i := 0; i < len(vel); i++ {
+					for j := 0; j < len(vel); j++ {
+						if i == j {
+							continue
+						}
+						switch {
+						case pos[i] < pos[j]:
+							vel[i]++
+						case pos[i] > pos[j]:
+							vel[i]--
+						default:
+						}
+					}
+				}
+
+				for i := range pos {
+					pos[i] += vel[i]
+				}
+
+				ct++
+			}
+			reports <- ct
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(reports)
+	}()
+
+	cyclePts := make([]int, 0)
+	for report := range reports {
+		cyclePts = append(cyclePts, report)
+	}
+
+	return LCM(cyclePts[0], cyclePts[1], cyclePts[2])
 }
